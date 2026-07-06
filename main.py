@@ -121,10 +121,19 @@ async def rate_limiting_middleware(request, call_next):
         oldest_request = timestamps[0]
         retry_after = int(RATE_LIMIT_WINDOW - (current_time - oldest_request)) + 1
         
+        # 1. Capture the origin header from the incoming request (or fallback to wildcard)
+        origin = request.headers.get("origin", "*")
+        
+        # 2. Return the 429 response explicitly injecting the required CORS headers
         return Response(
             content="Rate limit exceeded. Too many requests.", 
             status_code=429, 
-            headers={"Retry-After": str(retry_after)}
+            headers={
+                "Retry-After": str(retry_after),
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Expose-Headers": "Retry-After"
+            }
         )
         
     # Track this valid request timestamp
